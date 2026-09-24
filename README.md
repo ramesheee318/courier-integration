@@ -1,118 +1,651 @@
-<p align="center">
-  <a href="http://nestjs.com/" target="blank"><img src="https://nestjs.com/img/logo-small.svg" width="120" alt="Nest Logo" /></a>
-</p>
+Multi-Courier Integration Platform
 
-[circleci-image]: https://img.shields.io/circleci/build/github/nestjs/nest/master?token=abc123def456
-[circleci-url]: https://circleci.com/gh/nestjs/nest
+A scalable backend platform that provides a unified REST API for integrating multiple courier partners.
 
-  <p align="center">A progressive <a href="http://nodejs.org" target="_blank">Node.js</a> framework for building efficient and scalable server-side applications.</p>
-    <p align="center">
-<a href="https://www.npmjs.com/~nestjscore" target="_blank"><img src="https://img.shields.io/npm/v/@nestjs/core.svg" alt="NPM Version" /></a>
-<a href="https://www.npmjs.com/~nestjscore" target="_blank"><img src="https://img.shields.io/npm/l/@nestjs/core.svg" alt="Package License" /></a>
-<a href="https://www.npmjs.com/~nestjscore" target="_blank"><img src="https://img.shields.io/npm/dm/@nestjs/common.svg" alt="NPM Downloads" /></a>
-<a href="https://circleci.com/gh/nestjs/nest" target="_blank"><img src="https://img.shields.io/circleci/build/github/nestjs/nest/master" alt="CircleCI" /></a>
-<a href="https://discord.gg/G7Qnnhy" target="_blank"><img src="https://img.shields.io/badge/discord-online-brightgreen.svg" alt="Discord"/></a>
-<a href="https://opencollective.com/nest#backer" target="_blank"><img src="https://opencollective.com/nest/backers/badge.svg" alt="Backers on Open Collective" /></a>
-<a href="https://opencollective.com/nest#sponsor" target="_blank"><img src="https://opencollective.com/nest/sponsors/badge.svg" alt="Sponsors on Open Collective" /></a>
-  <a href="https://paypal.me/kamilmysliwiec" target="_blank"><img src="https://img.shields.io/badge/Donate-PayPal-ff3f59.svg" alt="Donate us"/></a>
-    <a href="https://opencollective.com/nest#sponsor"  target="_blank"><img src="https://img.shields.io/badge/Support%20us-Open%20Collective-41B883.svg" alt="Support us"></a>
-  <a href="https://twitter.com/nestframework" target="_blank"><img src="https://img.shields.io/twitter/follow/nestframework.svg?style=social&label=Follow" alt="Follow us on Twitter"></a>
-</p>
-  <!--[![Backers on Open Collective](https://opencollective.com/nest/backers/badge.svg)](https://opencollective.com/nest#backer)
-  [![Sponsors on Open Collective](https://opencollective.com/nest/sponsors/badge.svg)](https://opencollective.com/nest#sponsor)-->
+The platform hides courier-specific API formats from consumers and provides a common interface for:
 
-## Description
+- Creating shipments
+- Tracking shipments
+- Cancelling shipments
+- Bulk shipment creation
+- Courier-specific request/response mapping
+- Retry and error handling
+- Shipment persistence
+- Tracking history
+- Asynchronous bulk processing
 
-[Nest](https://github.com/nestjs/nest) framework TypeScript starter repository.
+Technology Stack
 
-## Project setup
+- Node.js
+- NestJS
+- TypeScript
+- PostgreSQL
+- Prisma ORM
+- Redis
+- BullMQ
+- Axios
+- Jest
+- Docker / Docker Compose
 
-```bash
-$ npm install
-```
+Architecture
 
-## Compile and run the project
+Client
+  |
+  v
+REST API
+  |
+  v
+Orders Service
+  |
+  v
+Courier Registry
+  |
+  +----------------------+
+  |                      |
+  v                      v
+UrbaneBolt Adapter    Mock Courier Adapter
+  |
+  +-- Mapper
+  |
+  +-- API Client
+  |
+  v
+UrbaneBolt API
 
-```bash
-# development
-$ npm run start
+For bulk requests:
 
-# watch mode
-$ npm run start:dev
+Client
+  |
+  v
+POST /api/v1/orders/bulk
+  |
+  v
+Create Batch
+  |
+  v
+Redis / BullMQ
+  |
+  +---- Job 1 ----> Courier Adapter
+  |
+  +---- Job 2 ----> Courier Adapter
+  |
+  +---- Job 3 ----> Courier Adapter
+  |
+  ...
+  |
+  v
+Batch Status
 
-# production mode
-$ npm run start:prod
-```
+Features
 
-## Run tests
+1. Unified Courier API
 
-```bash
-# unit tests
-$ npm run test
+Consumers send a common order format and specify the courier using:
 
-# e2e tests
-$ npm run test:e2e
+{
+  "courier_partner": "urbanebolt"
+}
 
-# test coverage
-$ npm run test:cov
-```
+Consumers do not need to know the courier-specific API format.
 
-## Deployment
+2. Supported Couriers
 
-When you're ready to deploy your NestJS application to production, there are some key steps you can take to ensure it runs as efficiently as possible. Check out the [deployment documentation](https://docs.nestjs.com/deployment) for more information.
+Current integrations:
 
-If you are looking for a cloud-based platform to deploy your NestJS application, check out [Mau](https://mau.nestjs.com), our official platform for deploying NestJS applications on AWS. Mau makes deployment straightforward and fast, requiring just a few simple steps:
+- "urbanebolt"
+- "mock"
 
-```bash
-$ npm install -g @nestjs/mau
-$ mau deploy
-```
+The mock courier is available for development and testing without calling an external courier service.
 
-With Mau, you can deploy your application in just a few clicks, allowing you to focus on building features rather than managing infrastructure.
+The architecture allows additional courier partners to be added independently.
 
-## Observability
+3. Create Order
 
-In production applications, observability is essential for understanding how your system behaves, detecting issues early, and maintaining reliable performance.
+POST /api/v1/orders
 
-[NestJS Observe](https://observe.nestjs.com) automatically instruments your NestJS application, giving you deep visibility into your system with minimal setup:
+Example:
 
-- **Distributed tracing:** Follow requests across services and understand how they flow through your system.
-- **Waterfall analysis:** Visualize request execution and identify slow operations, bottlenecks, and unexpected delays.
-- **Performance analysis:** Analyze application performance in real time and quickly pinpoint areas that need optimization.
-- **Metrics:** Track key application and infrastructure metrics to understand system health and performance trends.
-- **Logging:** Centralize and correlate logs with traces and other telemetry to make debugging easier.
-- **Error tracking:** Detect errors quickly and investigate their root causes with the surrounding context.
-- **SLA monitoring:** Track service-level objectives and identify when your application is approaching or exceeding defined thresholds.
-- **Alarms and alerts:** Set up alerts for critical errors, performance degradation, SLA violations, and other anomalies so your team can react quickly.
+{
+  "order_id": "UB-DEMO-1003",
+  "courier_partner": "urbanebolt",
+  "pickup": {
+    "name": "Demo Seller",
+    "phone": "9876543210",
+    "email": "seller@example.com",
+    "address": "MG Road Bengaluru Karnataka",
+    "city": "Bengaluru",
+    "state": "Karnataka",
+    "country": "India",
+    "pincode": "560001"
+  },
+  "delivery": {
+    "name": "Demo Customer",
+    "phone": "9876543211",
+    "email": "customer@example.com",
+    "address": "Indiranagar Bengaluru Karnataka",
+    "city": "Bengaluru",
+    "state": "Karnataka",
+    "country": "India",
+    "pincode": "560038"
+  },
+  "package": {
+    "weight": 1.5,
+    "length": 10,
+    "width": 10,
+    "height": 10,
+    "pieces": 1,
+    "item_description": "Electronic Item"
+  },
+  "payment": {
+    "type": "PREPAID",
+    "amount": 1500
+  },
+  "invoice": {
+    "number": "INV-1003",
+    "date": "2026-09-24",
+    "value": 1500
+  }
+}
 
-This project is already instrumented. Create a free account at [observe.nestjs.com](https://observe.nestjs.com), add an application, and paste the generated app key and secret into the `ObserveModule.forRoot()` call in `src/app.module.ts`.
+Example response:
 
-The free plan needs no payment details and covers 300,000 events a month. You can also browse the [live demo](https://www.observe-demo.nestjs.com/dashboard) first - the whole dashboard over a busy service's data, with nothing to install.
+{
+  "success": true,
+  "data": {
+    "order_id": "UB-DEMO-1003",
+    "courier_partner": "urbanebolt",
+    "courier_order_id": "UB-DEMO-1003",
+    "awb_number": "200000007933",
+    "status": "CREATED"
+  },
+  "request_id": "ub-test-003"
+}
 
-## Resources
+Track Order
 
-Check out a few resources that may come in handy when working with NestJS:
+GET /api/v1/orders/{order_id}/track
 
-- Visit the [NestJS Documentation](https://docs.nestjs.com) to learn more about the framework.
-- For questions and support, please visit our [Discord channel](https://discord.gg/G7Qnnhy).
-- To dive deeper and get more hands-on experience, check out our official video [courses](https://courses.nestjs.com/).
-- Deploy your application to AWS with the help of [NestJS Mau](https://mau.nestjs.com) in just a few clicks.
-- Auto-instrument your application with [NestJS Observe](https://observe.nestjs.com). Distributed tracing, metrics, and logging made easy. Error tracking and performance monitoring for your NestJS applications.
-- Visualize your application graph and interact with the NestJS application in real-time using [NestJS Devtools](https://devtools.nestjs.com).
-- Need help with your project (part-time to full-time)? Check out our official [enterprise support](https://enterprise.nestjs.com).
-- To stay in the loop and get updates, follow us on [X](https://x.com/nestframework) and [LinkedIn](https://linkedin.com/company/nestjs).
-- Looking for a job, or have a job to offer? Check out our official [Jobs board](https://jobs.nestjs.com).
+Example:
 
-## Support
+GET /api/v1/orders/UB-DEMO-1003/track
 
-Nest is an MIT-licensed open source project. It can grow thanks to the sponsors and support by the amazing backers. If you'd like to join them, please [read more here](https://docs.nestjs.com/support).
+The platform:
 
-## Stay in touch
+1. Loads the order from PostgreSQL.
+2. Identifies the courier partner.
+3. Gets the courier adapter from the registry.
+4. Calls the courier tracking API.
+5. Normalizes the status.
+6. Updates the current order status.
+7. Adds a tracking history record.
 
-- Author - [Kamil Myśliwiec](https://twitter.com/kammysliwiec)
-- Website - [https://nestjs.com](https://nestjs.com/)
-- Twitter - [@nestframework](https://twitter.com/nestframework)
+Cancel Order
 
-## License
+POST /api/v1/orders/{order_id}/cancel
 
-Nest is [MIT licensed](https://github.com/nestjs/nest/blob/master/LICENSE).
+The platform uses the stored courier shipment/AWB information and invokes the appropriate courier adapter.
+
+Bulk Orders
+
+POST /api/v1/orders/bulk
+
+A maximum of 100 orders can be submitted in one request.
+
+Example:
+
+{
+  "orders": [
+    {
+      "order_id": "BULK-001",
+      "courier_partner": "mock",
+      "pickup": {},
+      "delivery": {},
+      "package": {},
+      "payment": {},
+      "invoice": {}
+    },
+    {
+      "order_id": "BULK-002",
+      "courier_partner": "urbanebolt",
+      "pickup": {},
+      "delivery": {},
+      "package": {},
+      "payment": {},
+      "invoice": {}
+    }
+  ]
+}
+
+Bulk processing uses:
+
+POST /orders/bulk
+        |
+        v
+Create Batch
+        |
+        v
+BullMQ
+        |
+        +---- Job
+        +---- Job
+        +---- Job
+        |
+        v
+Courier Adapter
+
+Jobs are processed asynchronously with controlled concurrency.
+
+Current worker concurrency:
+
+5 concurrent jobs
+
+This prevents a large bulk request from blocking the HTTP request or overwhelming the courier API.
+
+Batch Status
+
+GET /api/v1/batches/{batch_id}
+
+The batch contains:
+
+- Total orders
+- Successful orders
+- Failed orders
+- Processing status
+- Individual job status
+
+Possible batch statuses:
+
+PROCESSING
+COMPLETED
+PARTIALLY_COMPLETED
+FAILED
+
+Idempotency
+
+"order_id" is unique in the database.
+
+Order.orderId UNIQUE
+
+If the same order is submitted again, the existing order can be returned instead of creating another courier shipment.
+
+This protects against duplicate shipment creation caused by client retries.
+
+Persistence
+
+Order
+
+The platform stores:
+
+- Internal order ID
+- Courier partner
+- Courier order/shipment ID
+- AWB number
+- Current status
+- Courier request payload
+- Courier response payload
+- Created timestamp
+- Updated timestamp
+
+Tracking History
+
+Every tracking update is stored separately.
+
+It contains:
+
+- Order reference
+- Status
+- Raw courier payload
+- Event timestamp
+- Created timestamp
+
+The tracking history provides an audit trail of shipment status changes.
+
+Batch
+
+Stores:
+
+- Batch ID
+- Batch status
+- Total orders
+- Successful orders
+- Failed orders
+- Timestamps
+
+BatchJob
+
+Stores:
+
+- Batch ID
+- Order ID
+- Job status
+- Error code
+- Error message
+- Timestamps
+
+Shipment Status
+
+The platform normalizes courier-specific statuses into:
+
+CREATED
+PICKED_UP
+IN_TRANSIT
+OUT_FOR_DELIVERY
+DELIVERED
+CANCELLED
+FAILED
+
+Courier-specific status values are mapped by the corresponding adapter.
+
+Error Handling
+
+The platform uses normalized courier errors.
+
+Validation Error
+
+Invalid requests are rejected with HTTP "400".
+
+NestJS validation is configured using:
+
+ValidationPipe({
+  whitelist: true,
+  transform: true,
+  forbidNonWhitelisted: true,
+})
+
+Unknown Courier
+
+If an unsupported courier is requested, the platform rejects the request and does not call an unknown integration.
+
+Courier 4xx
+
+Courier client errors are normalized and raw courier error details are not directly exposed to API consumers.
+
+Courier 5xx
+
+Temporary courier failures are classified as retryable.
+
+Timeout
+
+Courier requests use an HTTP timeout.
+
+Timeouts are normalized into a courier timeout error.
+
+Network Error
+
+Connection failures are normalized into a network error.
+
+Authentication Failure
+
+If a courier API returns an authentication failure:
+
+1. Existing token is invalidated.
+2. Authentication is performed again.
+3. The original request is retried once.
+
+Retry
+
+Retryable failures include:
+
+SERVER_ERROR
+TIMEOUT
+NETWORK_ERROR
+
+Exponential backoff is used for retryable failures.
+
+Logging and Request Correlation
+
+The API supports:
+
+X-Request-Id
+
+The request ID can be used to correlate API activity with logs and downstream operations.
+
+Relevant operational information includes:
+
+- Request ID
+- Order ID
+- Courier partner
+- Error type
+- Error details
+- Stack trace where appropriate
+
+Configuration
+
+Environment-specific configuration is loaded from ".env".
+
+Example:
+
+PORT=3000
+
+DATABASE_URL=postgresql://postgres:postgres@localhost:5432/courier_platform
+
+REDIS_HOST=localhost
+REDIS_PORT=6379
+
+Courier credentials should be supplied through environment variables or a secret manager in production.
+
+Do not commit real credentials to source control.
+
+Database
+
+PostgreSQL is used for transactional order data.
+
+Main entities:
+
+Order
+TrackingHistory
+Batch
+BatchJob
+
+Relationships:
+
+Order
+ |
+ +---- TrackingHistory
+
+Batch
+ |
+ +---- BatchJob
+
+Local Setup
+
+Prerequisites
+
+Install:
+
+- Node.js
+- npm
+- Docker
+- Docker Compose
+
+Install Dependencies
+
+npm install
+
+Start PostgreSQL and Redis
+
+docker compose up -d
+
+Verify:
+
+docker ps
+
+Configure Environment
+
+Create:
+
+.env
+
+Example:
+
+PORT=3000
+DATABASE_URL=postgresql://postgres:postgres@localhost:5432/courier_platform
+REDIS_HOST=localhost
+REDIS_PORT=6379
+
+Configure courier credentials separately.
+
+Generate Prisma Client
+
+npx prisma generate
+
+Run Database Migration
+
+npx prisma migrate dev --name init
+
+Start Application
+
+Development:
+
+npm run start:dev
+
+Production:
+
+npm run build
+npm run start:prod
+
+Application:
+
+http://localhost:3000
+
+API base path:
+
+http://localhost:3000/api/v1
+
+API Endpoints
+
+Method| Endpoint| Description
+POST| "/api/v1/orders"| Create shipment
+GET| "/api/v1/orders/{order_id}"| Get order
+GET| "/api/v1/orders/{order_id}/track"| Track shipment
+POST| "/api/v1/orders/{order_id}/cancel"| Cancel shipment
+POST| "/api/v1/orders/bulk"| Create bulk shipments
+GET| "/api/v1/batches/{batch_id}"| Get batch status
+
+Testing
+
+Run unit tests:
+
+npm test
+
+Run tests in watch mode:
+
+npm run test:watch
+
+Run coverage:
+
+npm run test:cov
+
+Project Structure
+
+multi-courier-platform/
+├── src/
+│   ├── common/
+│   ├── config/
+│   ├── couriers/
+│   │   ├── courier.interface.ts
+│   │   ├── courier.registry.ts
+│   │   ├── courier.error.ts
+│   │   ├── courier-retry.service.ts
+│   │   ├── mock-courier.adapter.ts
+│   │   └── urbanebolt/
+│   │       ├── urbanebolt.client.ts
+│   │       ├── urbanebolt.mapper.ts
+│   │       └── urbanebolt.adapter.ts
+│   ├── orders/
+│   │   ├── dto/
+│   │   ├── orders.controller.ts
+│   │   ├── batch.controller.ts
+│   │   ├── orders.service.ts
+│   │   ├── orders.queue.ts
+│   │   └── bulk-order.processor.ts
+│   └── prisma/
+│       ├── prisma.module.ts
+│       └── prisma.service.ts
+├── prisma/
+│   └── schema.prisma
+├── docker-compose.yml
+├── .env
+├── .env.example
+├── DESIGN.md
+└── README.md
+
+Adding a New Courier
+
+A new courier can be integrated by implementing:
+
+CourierAdapter
+
+The adapter provides:
+
+authenticate()
+createShipment()
+trackShipment()
+cancelShipment()
+
+The courier-specific implementation should contain:
+
+- API client
+- Authentication
+- Request mapper
+- Response mapper
+- Courier-specific error handling
+
+The existing Orders Controller, DTOs and business workflow do not need to know courier-specific details.
+
+Design Principles
+
+The implementation follows:
+
+- Separation of concerns
+- Dependency inversion
+- Adapter pattern
+- Registry pattern
+- Courier abstraction
+- Asynchronous processing
+- Idempotency
+- Transactional persistence
+- Retry with backoff
+- Configuration-driven integration
+- Auditability
+
+Assignment Requirements Coverage
+
+Requirement| Implementation
+Unified REST API| Orders Controller
+Courier abstraction| "CourierAdapter"
+Pluggable couriers| Courier Registry
+UrbaneBolt integration| UrbaneBolt Adapter
+Persistence| PostgreSQL + Prisma
+Tracking history| "TrackingHistory"
+Bulk up to 100| "BulkOrdersDto"
+Async bulk processing| BullMQ
+Concurrent processing| BullMQ worker concurrency
+Idempotency| Unique "order_id"
+Retry| Retry service / BullMQ retry
+Auth retry| UrbaneBolt Client
+Validation| NestJS ValidationPipe
+Error normalization| "CourierError"
+Config| Environment variables
+Second courier| Mock Courier Adapter
+
+Production Considerations
+
+For production deployment, the following should be added or strengthened:
+
+- Secret manager for courier credentials
+- Structured logging
+- Distributed tracing
+- Metrics and monitoring
+- Dead-letter queue
+- Circuit breaker
+- API authentication/authorization
+- Rate limiting
+- Database connection pooling
+- Health/readiness endpoints
+- Alerting
+- Encryption and security hardening
+
+License
+
+This project is created as a technical assignment/demo implementation.
